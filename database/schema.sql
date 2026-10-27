@@ -112,6 +112,9 @@ CREATE TABLE IF NOT EXISTS core.plants (
     owner VARCHAR(500),
     geolocation_source VARCHAR(255),
 
+    -- Link back to the raw row this plant was built from
+    source_raw_id BIGINT,
+
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 
@@ -163,11 +166,8 @@ CREATE TABLE IF NOT EXISTS core.generation (
             generation_year BETWEEN 1900 AND 2100
         ),
 
-    CONSTRAINT chk_actual_generation
-        CHECK (
-            actual_generation_gwh IS NULL
-            OR actual_generation_gwh >= 0
-        ),
+    -- actual_generation_gwh may be negative: storage plants consume
+    -- more energy than they produce, so no >= 0 rule here.
 
     CONSTRAINT chk_estimated_generation
         CHECK (
@@ -200,6 +200,31 @@ CREATE INDEX IF NOT EXISTS idx_generation_plant
 CREATE INDEX IF NOT EXISTS idx_generation_year
     ON core.generation(generation_year);
 
+CREATE UNIQUE INDEX IF NOT EXISTS uq_plants_source_raw_id
+    ON core.plants(source_raw_id);
+
+
+-- Data quality findings (rebuilt on every pipeline run)
+
+CREATE TABLE IF NOT EXISTS core.data_quality_issues (
+    issue_id BIGSERIAL PRIMARY KEY,
+
+    rule VARCHAR(100) NOT NULL,
+    severity VARCHAR(20) NOT NULL,
+
+    raw_id BIGINT,
+    plant_id BIGINT,
+    detail TEXT,
+
+    detected_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT chk_dq_severity
+        CHECK (severity IN ('info', 'warning', 'error'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_dq_rule
+    ON core.data_quality_issues(rule);
+
 
 -- ANALYTICS LAYER
 
@@ -223,4 +248,4 @@ CREATE TABLE IF NOT EXISTS analytics.country_energy_summary (
     CONSTRAINT fk_summary_country
         FOREIGN KEY (country_id)
         REFERENCES core.countries(country_id)
-);
+);

@@ -20,17 +20,21 @@ services:
 
       AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
 
+    # lets the container reach a Postgres running on the host (Linux)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
     ports:
       - "8080:8080"
 
     volumes:
       - ./dags:/opt/airflow/dags
       - airflow_logs:/opt/airflow/logs
-      - ./plugins:/opt/airflow/plugins
       - ./data:/opt/airflow/data
+      - ./database:/opt/airflow/database
 
     command: standalone
 
 
 volumes:
-  airflow_logs:
+  airflow_logs:

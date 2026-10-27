@@ -12,7 +12,6 @@ poweratlas-venv/
 # Environment / secrets
 .env
 .env.*
-!.env.example
 
 # Airflow
 logs/
